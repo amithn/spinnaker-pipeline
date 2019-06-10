@@ -1,0 +1,307 @@
+{
+  "appConfig": {},
+  "expectedArtifacts": [
+    {
+      "defaultArtifact": {
+        "id": "91866dc7-4955-4291-a060-4379155da746",
+        "name": "gs://spring-customer-app/pickup-prediction-service.jar",
+        "reference": "gs://spring-customer-app/pickup-prediction-service.jar",
+        "type": "gcs/object"
+      },
+      "displayName": "gs://spring-customer-app/pickup-prediction-service.jar",
+      "id": "eb994b49-7bef-49c6-9f9a-40343fef3326",
+      "matchArtifact": {
+        "id": "46bf74a6-b092-4c57-978f-7603e9b88d6a",
+        "kind": "gcs",
+        "name": "gs://spring-customer-app/pickup-prediction-service.jar",
+        "type": "gcs/object"
+      },
+      "useDefaultArtifact": true,
+      "usePriorArtifact": false
+    }
+  ],
+  "keepWaitingPipelines": false,
+  "lastModifiedBy": "anonymous",
+  "limitConcurrent": true,
+  "stages": [
+    {
+      "clusters": [
+        {
+          "account": "pez",
+          "application": "predictionservice",
+          "applicationArtifact": {
+            "artifact": {
+              "artifactAccount": "gcs-artifact-account",
+              "customKind": false,
+              "id": "0dc57914-5d4f-447c-a445-68bc6feaf9aa",
+              "name": "gs://spring-customer-app/pickup-prediction-service.jar",
+              "reference": "gs://spring-customer-app/pickup-prediction-service.jar",
+              "type": "gcs/object"
+            }
+          },
+          "cloudProvider": "cloudfoundry",
+          "freeFormDetails": "",
+          "manifest": {
+            "direct": {
+              "buildpacks": [],
+              "diskQuota": "1024M",
+              "environment": [
+                {
+                  "key": "DATADOG_API_KEY",
+                  "value": "API-KEY"
+                },
+                {
+                  "key": "DATADOG_APPLICATION_KEY",
+                  "value": "APP-KEY"
+                },
+                {
+                  "key": "DEPLOYMENT_TYPE",
+                  "value": "canary"
+                }
+              ],
+              "healthCheckType": "port",
+              "instances": 1,
+              "memory": "1024M",
+              "routes": [
+                "pickup-prediction-service.apps.pcfplatform.com",
+                "canary-pickup-prediction-service.apps.pcfplatform.com"
+              ],
+              "services": []
+            }
+          },
+          "provider": "cloudfoundry",
+          "region": "pickup-prediction-service > production",
+          "stack": "canary",
+          "startApplication": true,
+          "strategy": "highlander"
+        }
+      ],
+      "name": "Deploy Canary",
+      "refId": "10",
+      "requisiteStageRefIds": [],
+      "type": "deploy"
+    },
+    {
+      "account": "pez",
+      "application": "predictionservice",
+      "cloudProvider": "cloudfoundry",
+      "cloudProviderType": "cloudfoundry",
+      "credentials": "pez",
+      "destination": {
+        "account": "pez",
+        "region": "pickup-prediction-service > production"
+      },
+      "freeFormDetails": "",
+      "manifest": {
+        "direct": {
+          "buildpacks": [],
+          "diskQuota": "1024M",
+          "environment": [
+            {
+              "key": "DATADOG_API_KEY",
+              "value": "API-KEY"
+            },
+            {
+              "key": "DATADOG_APPLICATION_KEY",
+              "value": "APP-KEY"
+            },
+            {
+              "key": "DEPLOYMENT_TYPE",
+              "value": "baseline"
+            }
+          ],
+          "healthCheckType": "port",
+          "instances": 1,
+          "memory": "1024M",
+          "routes": [
+            "pickup-prediction-service.apps.pcfplatform.com",
+            "baseline-pickup-prediction-service.apps.pcfplatform.com"
+          ],
+          "services": []
+        }
+      },
+      "name": "Deploy Baseline",
+      "refId": "11",
+      "region": "pickup-prediction-service > production",
+      "requisiteStageRefIds": [],
+      "stack": "baseline",
+      "startApplication": true,
+      "target": "current_asg_dynamic",
+      "targetCluster": "predictionservice-production",
+      "type": "cloneServerGroup"
+    },
+    {
+      "analysisType": "realTime",
+      "canaryConfig": {
+        "beginCanaryAnalysisAfterMins": "1",
+        "canaryAnalysisIntervalMins": "1",
+        "canaryConfigId": "a5d54b5a-3a74-4f43-a59d-2f147d4668e6",
+        "lifetimeDuration": "PT0H3M",
+        "metricsAccountName": "datadog-account",
+        "scopes": [
+          {
+            "controlLocation": "pickup-prediction-service > production",
+            "controlScope": "deployment:baseline",
+            "experimentLocation": "pickup-prediction-service > canary",
+            "experimentScope": "deployment:canary",
+            "extendedScopeParams": {},
+            "scopeName": "default",
+            "step": 0
+          }
+        ],
+        "scoreThresholds": {
+          "marginal": "40",
+          "pass": "50"
+        },
+        "storageAccountName": "google-canary-account"
+      },
+      "completeOtherBranchesThenFail": false,
+      "continuePipeline": true,
+      "failPipeline": false,
+      "name": "Canary Analysis",
+      "refId": "12",
+      "requisiteStageRefIds": [
+        "10",
+        "11"
+      ],
+      "type": "kayentaCanary"
+    },
+    {
+      "completeOtherBranchesThenFail": false,
+      "continuePipeline": true,
+      "failPipeline": false,
+      "name": "Canary Analysis Result",
+      "preconditions": [
+        {
+          "context": {
+            "expression": "${#stage(\"Canary Analysis\")[\"status\"].toString() == \"SUCCEEDED\"}"
+          },
+          "failPipeline": true,
+          "type": "expression"
+        }
+      ],
+      "refId": "13",
+      "requisiteStageRefIds": [
+        "12"
+      ],
+      "type": "checkPreconditions"
+    },
+    {
+      "clusters": [
+        {
+          "account": "pez",
+          "application": "predictionservice",
+          "applicationArtifact": {
+            "artifact": {
+              "artifactAccount": "gcs-artifact-account",
+              "customKind": true,
+              "id": "934d5c56-2e98-42a6-83f4-a8d9422908e2",
+              "name": "gs://spring-customer-app/pickup-prediction-service.jar",
+              "reference": "gs://spring-customer-app/pickup-prediction-service.jar",
+              "type": "gcs/object"
+            }
+          },
+          "cloudProvider": "cloudfoundry",
+          "delayBeforeDisableSec": 0,
+          "delayBeforeScaleDownSec": 0,
+          "freeFormDetails": "",
+          "manifest": {
+            "direct": {
+              "buildpacks": [],
+              "diskQuota": "1024M",
+              "environment": [
+                {
+                  "key": "DATADOG_API_KEY",
+                  "value": "API-KEY"
+                },
+                {
+                  "key": "DATADOG_APPLICATION_KEY",
+                  "value": "APP-KEY"
+                },
+                {
+                  "key": "DEPLOYMENT_TYPE",
+                  "value": "production"
+                }
+              ],
+              "healthCheckType": "port",
+              "instances": 1,
+              "memory": "1024M",
+              "routes": [
+                "pickup-prediction-service.apps.pcfplatform.com"
+              ],
+              "services": []
+            }
+          },
+          "maxRemainingAsgs": 2,
+          "provider": "cloudfoundry",
+          "region": "pickup-prediction-service > production",
+          "rollback": {
+            "onFailure": false
+          },
+          "scaleDown": false,
+          "stack": "production",
+          "startApplication": true,
+          "strategy": "redblack"
+        }
+      ],
+      "name": "Deploy to Production",
+      "refId": "14",
+      "requisiteStageRefIds": [
+        "13"
+      ],
+      "stageEnabled": {
+        "expression": "${#stage(\"Canary Analysis\")[\"status\"].toString() == \"SUCCEEDED\"}",
+        "type": "expression"
+      },
+      "type": "deploy"
+    },
+    {
+      "cloudProvider": "cloudfoundry",
+      "cloudProviderType": "cloudfoundry",
+      "cluster": "predictionservice-canary",
+      "credentials": "pez",
+      "name": "Delete Canary",
+      "refId": "15",
+      "regions": [
+        "pickup-prediction-service > production"
+      ],
+      "requisiteStageRefIds": [
+        "13"
+      ],
+      "target": "current_asg_dynamic",
+      "type": "destroyServerGroup"
+    },
+    {
+      "cloudProvider": "cloudfoundry",
+      "cloudProviderType": "cloudfoundry",
+      "cluster": "predictionservice-baseline",
+      "credentials": "pez",
+      "name": "Delete Baseline",
+      "refId": "16",
+      "regions": [
+        "pickup-prediction-service > production"
+      ],
+      "requisiteStageRefIds": [
+        "13"
+      ],
+      "target": "current_asg_dynamic",
+      "type": "destroyServerGroup"
+    }
+  ],
+  "triggers": [
+    {
+      "attributeConstraints": {
+        "eventType": "OBJECT_FINALIZE"
+      },
+      "enabled": true,
+      "expectedArtifactIds": [
+        "eb994b49-7bef-49c6-9f9a-40343fef3326"
+      ],
+      "payloadConstraints": {},
+      "pubsubSystem": "google",
+      "subscriptionName": "spinnakerPubSub",
+      "type": "pubsub"
+    }
+  ],
+  "updateTs": "1560123922000"
+}
